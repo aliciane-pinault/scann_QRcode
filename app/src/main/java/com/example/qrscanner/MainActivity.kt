@@ -18,6 +18,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import com.google.zxing.integration.android.IntentIntegrator
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 
 class MainActivity : ComponentActivity() {
@@ -25,44 +34,72 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             QRScannerTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Replace Greeting call with QRCodeScannerButton
-                    QRCodeScannerButton()
+                    MainContent()
                 }
             }
         }
     }
 
     @Composable
-    fun QRCodeScannerButton() {
-        // Prepare launcher for result
-        val scanLauncher =
-            rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
-                val intentResult =
-                    IntentIntegrator.parseActivityResult(result.resultCode, result.data)
-                if (intentResult != null) {
-                    if (intentResult.contents == null) {
-                        Toast.makeText(applicationContext, "Cancelled", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(
-                            applicationContext,
-                            "Scanned: ${intentResult.contents}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+    fun MainContent() {
+        val scanLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
+            val result = IntentIntegrator.parseActivityResult(result.resultCode, result.data)
+            if (result != null) {
+                if (result.contents == null) {
+                    Toast.makeText(this@MainActivity, "Cancelled", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@MainActivity, "Scanned: ${result.contents}", Toast.LENGTH_LONG).show()
                 }
             }
+        }
 
-        Button(onClick = {
-            val integrator = IntentIntegrator(this@MainActivity)
-            // integrator.captureActivity = CaptureActivity::class.java
-            scanLauncher.launch(integrator.createScanIntent())
-        }) {
-            Text("Scan QR Code")
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Title()
+            Spacer(modifier = Modifier.height(16.dp))
+            ScanButton { scanLauncher.launch(IntentIntegrator(this@MainActivity).createScanIntent()) }
+        }
+    }
+
+    @Composable
+    fun Title() {
+        Text(
+            text = "Titre",
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            color = Color.Black
+        )
+    }
+
+    @Composable
+    fun ScanButton(onClick: () -> Unit) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .height(56.dp)
+                .fillMaxWidth(fraction = 0.8f),
+            colors = ButtonDefaults.buttonColors(Color.Blue)
+        ) {
+            Text(
+                "Scan QR Code",
+                color = Color.White,
+                fontSize = 18.sp
+            )
+        }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun DefaultPreview() {
+        QRScannerTheme {
+            MainContent()
         }
     }
 }
