@@ -3,27 +3,12 @@ package com.example.qrscanner
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import com.example.qrscanner.ui.theme.QRScannerTheme
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Button
-import com.google.zxing.integration.android.IntentIntegrator
 import android.widget.Toast
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-
+import androidx.activity.ComponentActivity
+import com.google.zxing.integration.android.IntentIntegrator
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okio.IOException
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +31,42 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, "Scanned: ${result.contents}", Toast.LENGTH_LONG).show()
+                // Envoie le JWT au serveur pour validation
+                sendTokenToServer(result.contents)
             }
         }
+    }
+
+    private fun sendTokenToServer(jwtToken: String) {
+        val client = OkHttpClient()
+        val mediaType = "application/json".toMediaTypeOrNull()
+        val body = RequestBody.create(mediaType, "{\"token\":\"$jwtToken\"}")
+        val request = Request.Builder()
+            .url("http://votre_serveur/validate-jwt") // TODO : Remplacez l'URL de notre serveur
+            .post(body)
+            .addHeader("content-type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // Gestion de l'échec de la requête (n'arrive pas a envoyer la requete au serveur)
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Erreur lors de la connexion au serveur", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                runOnUiThread {
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string()
+                        // afficher une notification pour un JWT valide
+                        Toast.makeText(applicationContext, "JWT Valide : $responseBody", Toast.LENGTH_LONG).show()
+                    } else {
+                        // Gestion de la réponse d'erreur pour un token JWt invalide (pas reconnue pas la bonne heure ...)
+                        Toast.makeText(applicationContext, "JWT Invalide", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        })
     }
 }
