@@ -7,7 +7,6 @@ import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.annotation.RequiresApi
 import com.google.zxing.integration.android.IntentIntegrator
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -19,11 +18,7 @@ import java.security.KeyStore
 import javax.net.ssl.SSLContext
 import java.io.InputStream
 import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
 import javax.net.ssl.TrustManagerFactory
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.Date
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -146,28 +141,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    //envoyer le token et l'heure de scan sur le serveur sous le format json
-    private fun sendTokenToServer(jwtToken: String) {
-        val client =
-            getUnsafeOkHttpClient() // Utilisez le client configuré pour passer outre les vérifications SSL
-
-        // Obtention de l'heure actuelle
-        val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val scannedTime = dateFormat.format(Date())
-
-        // Construction du corps de la requête JSON
-        //val jsonRequestBody = """
-        //{
-        //    "token_jwt": "$jwtToken",
-        //    "scanned_at": "$scannedTime"
-        //}
-        //""".trimIndent()
+    //envoyer le token sur le serveur sous le format json (dans le cas où on veut directement remplir une table avec les données par exemple)
+    private fun sendTokenToServer_1(jwtToken: String) {
+        val client = getUnsafeOkHttpClient()
 
         val jsonRequestBody = """
         {
-            "texte": "$jwtToken"
+            "token_jwt": "$jwtToken"
         }
         """.trimIndent()
+
+        // Imprimez le corps de la requête JSON dans les logs pour le débogage
+        Log.d("SendTokenToServer", "jsonRequestBody: $jsonRequestBody")
 
         // Définissez le MediaType pour "application/json"
         val mediaType = "application/json".toMediaTypeOrNull()
@@ -175,7 +160,7 @@ class MainActivity : ComponentActivity() {
 
         // Construction de la requête
         val request = Request.Builder()
-            .url("https://autopresence.isen.fr/api/testjson")
+            .url("https://192.168.200.23:443/api/tests")
             .post(body)
             .addHeader("content-type", "application/json")
             .build()
@@ -199,13 +184,13 @@ class MainActivity : ComponentActivity() {
                         val responseBody = response.body?.string()
                         Toast.makeText(
                             applicationContext,
-                            "Réponse du serveur : $responseBody",
+                            "données arriver sur le serveur sans problème $responseBody",
                             Toast.LENGTH_LONG
                         ).show()
                     } else {
                         Toast.makeText(
                             applicationContext,
-                            "Erreur de réponse du serveur (pas de successful en retour mais données envoyer vers le serveur)",
+                            "données arriver sur le serveur mais soucis au traitement ",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -213,4 +198,39 @@ class MainActivity : ComponentActivity() {
             }
         })
     }
+
+    //requete post
+    private fun sendTokenToServer(jwtToken: String) {
+        val client = getUnsafeOkHttpClient()
+
+        // Construction de l'URL avec le token JWT comme paramètre de requête
+        val url = HttpUrl.Builder()
+            .scheme("https")
+            .host("192.168.200.23")
+            .port(443)
+            .addPathSegment("api")
+            .addPathSegment("tests")
+            .addQueryParameter("token_jwt", jwtToken) // Ajout du token JWT comme paramètre de requête
+            .build()
+
+        // Construction de la requête
+        val request = Request.Builder()
+            .url(url)
+            .post(RequestBody.create(null, ByteArray(0))) // Corps vide pour une requête POST
+            .addHeader("content-type", "application/json")
+            .build()
+
+        // Envoi de la requête
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("Error", e.localizedMessage)
+                // Gestion de l'échec de la requête
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                // Gestion de la réponse
+            }
+        })
+    }
+
 }
